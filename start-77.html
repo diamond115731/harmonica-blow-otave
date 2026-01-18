@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>임지수의 하모니카 득음마스터 디지털 교재</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blow: #228be6; --draw: #f08c00; --success: #40c057; --bg: #f8f9fa;
+            --title-font: 'Noto Sans KR', sans-serif;
+        }
+        /* [보안] 드래그 및 선택 금지 */
+        * { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; outline: none; }
+        
+        body { 
+            font-family: 'Pretendard', -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            min-height: 100vh; margin: 0; background-color: #1a1a1a; transition: 0.3s ease; overflow-x: hidden;
+        }
+
+        /* [수정] 로그인 화면 스타일 - 검은 배경으로 시작 */
+        #login-screen { text-align: center; color: white; z-index: 10000; display: block; }
+        .login-box { background: #222; padding: 50px; border-radius: 35px; border: 1px solid #333; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .pw-input { padding: 18px; font-size: 1.3rem; border-radius: 15px; border: none; width: 220px; text-align: center; margin-bottom: 25px; background: #000; color: #fff; }
+        .pw-btn { padding: 15px 60px; background: var(--blow); color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; font-size: 1.2rem; }
+
+        /* [수정] 수련 본문 - 로그인 성공 전까지는 아예 숨김 */
+        #main-app { display: none; width: 100%; flex-direction: column; align-items: center; }
+        
+        body.unlocked { background-color: var(--bg); }
+        body.mode-blow { --primary: var(--blow); background-color: #f0f4f8; }
+        body.mode-draw { --primary: var(--draw); background-color: #fdf7f2; }
+        body.success-glow { background-color: #51cf66 !important; }
+
+        .main-title { font-family: var(--title-font); font-weight: 900; font-size: 2.5rem; color: #1a1a1a; margin-bottom: 20px; }
+        .container { background: rgba(255, 255, 255, 0.98); padding: 1.5rem; border-radius: 35px; box-shadow: 0 25px 50px rgba(0,0,0,0.1); text-align: center; width: 98%; max-width: 1550px; }
+        
+        #harmonica-svg { width: 100%; height: auto; margin-bottom: 10px; filter: drop-shadow(0 15px 20px rgba(0,0,0,0.2)); }
+        .hole { fill: #1a1a1a; stroke: #333; stroke-width: 1.5px; transition: 0.1s; }
+        .hole.active { fill: var(--primary); }
+        .do-box { fill: none; stroke: #ff0000; stroke-width: 3px; pointer-events: none; opacity: 0.3; }
+
+        .menu-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .menu-grid { display: flex; justify-content: center; gap: 6px; flex-wrap: nowrap; }
+        .menu-btn { flex: 1; padding: 12px 2px; border: 2px solid #e9ecef; border-radius: 12px; background: white; cursor: pointer; font-weight: 800; font-size: 0.9rem; color: #343a40; display: flex; align-items: center; justify-content: center; gap: 2px; white-space: nowrap; }
+        .menu-btn.active { background: var(--primary); color: white; border-color: var(--primary); transform: translateY(-3px); }
+
+        .num-box { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 14px; line-height: 1; }
+        .dot { width: 3.2px; height: 3.2px; background-color: currentColor; border-radius: 50%; display: block; }
+        .low-dot { margin-top: 2px; }
+        .high-dot { margin-bottom: 2px; }
+        .super-high-dots { display: flex; gap: 1px; margin-bottom: 2px; }
+
+        .status-msg { font-size: 1.4rem; font-weight: bold; min-height: 4.5rem; display: flex; align-items: center; justify-content: center; color: #495057; white-space: pre-line; }
+        .progress-bar { width: 100%; height: 12px; background: #eee; border-radius: 6px; overflow: hidden; margin-bottom: 15px; }
+        #progress-fill { width: 0%; height: 100%; background: var(--success); transition: width 0.1s linear; }
+        #start-btn { padding: 15px 60px; font-size: 1.4rem; cursor: pointer; border: none; border-radius: 50px; background: var(--blow); color: white; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+        .fx-layer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 100; opacity: 0; }
+        .fx-layer.show { opacity: 1; }
+        .flower-fx { font-size: 15rem; }
+    </style>
+</head>
+<body oncontextmenu="return false">
+
+<div id="login-screen">
+    <div class="login-box">
+        <h1 style="font-family:'Noto Sans KR'; margin-bottom:15px;">임지수 득음마스터</h1>
+        <p style="color:#aaa; margin-bottom:25px;">회원 전용 비밀번호를 입력하세요.</p>
+        <input type="password" id="pw-input" class="pw-input" placeholder="비밀번호">
+        <br>
+        <button onclick="unlockApp()" class="pw-btn">수련 입장하기</button>
+    </div>
+</div>
+
+<div id="main-app">
+    <div id="fx-layer" class="fx-layer"></div>
+    <div class="container">
+        <h1 class="main-title">임지수의 하모니카 득음마스터 디지털 교재</h1>
+        <svg id="harmonica-svg" viewBox="0 0 1600 240">
+            <defs>
+                <linearGradient id="case-grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#f8f9fa"/><stop offset="50%" style="stop-color:#bbb"/><stop offset="100%" style="stop-color:#888"/></linearGradient>
+                <linearGradient id="body-grad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#444"/><stop offset="50%" style="stop-color:#666"/><stop offset="100%" style="stop-color:#333"/></linearGradient>
+            </defs>
+            <rect x="30" y="35" width="120" height="170" fill="#222" rx="10"/> 
+            <rect x="1450" y="35" width="120" height="170" fill="#222" rx="10"/> 
+            <rect x="150" y="10" width="1300" height="25" fill="url(#case-grad)" rx="5"/> 
+            <rect x="150" y="205" width="1300" height="25" fill="url(#case-grad)" rx="5"/> 
+            <rect x="150" y="35" width="1300" height="170" fill="url(#body-grad)"/> 
+            <text x="90" y="135" font-size="70" fill="white" font-weight="bold" text-anchor="middle">C</text>
+            <g id="holes-group"></g><g id="red-boxes"></g><g id="hole-numbers"></g>
+        </svg>
+
+        <div class="menu-container">
+            <div class="menu-grid">
+                <button class="menu-btn active" onclick="setMode('C4')">저음도(<div class="num-box">1<span class="dot low-dot"></span></div>)-중음도(1)</button>
+                <button class="menu-btn" onclick="setMode('D4')">저음레(<div class="num-box">2<span class="dot low-dot"></span></div>)-중음레(2)</button>
+                <button class="menu-btn" onclick="setMode('E4')">저음미(<div class="num-box">3<span class="dot low-dot"></span></div>)-중음미(3)</button>
+                <button class="menu-btn" onclick="setMode('F4')">저음파(<div class="num-box">4<span class="dot low-dot"></span></div>)-중음파(4)</button>
+                <button class="menu-btn" onclick="setMode('G4')">저음솔(<div class="num-box">5<span class="dot low-dot"></span></div>)-중음솔(5)</button>
+                <button class="menu-btn" onclick="setMode('A4')">저음라(<div class="num-box">6<span class="dot low-dot"></span></div>)-중음라(6)</button>
+                <button class="menu-btn" onclick="setMode('B4')">저음시(<div class="num-box">7<span class="dot low-dot"></span></div>)-중음시(7)</button>
+                <button class="menu-btn" onclick="setMode('C5')">중음도(1)-고음도(<div class="num-box"><span class="dot high-dot"></span>1</div>)</button>
+            </div>
+            <div class="menu-grid">
+                <button class="menu-btn" onclick="setMode('D5')">중음레(2)-고음레(<div class="num-box"><span class="dot high-dot"></span>2</div>)</button>
+                <button class="menu-btn" onclick="setMode('E5')">중음미(3)-고음미(<div class="num-box"><span class="dot high-dot"></span>3</div>)</button>
+                <button class="menu-btn" onclick="setMode('F5')">중음파(4)-고음파(<div class="num-box"><span class="dot high-dot"></span>4</div>)</button>
+                <button class="menu-btn" onclick="setMode('G5')">중음솔(5)-고음솔(<div class="num-box"><span class="dot high-dot"></span>5</div>)</button>
+                <button class="menu-btn" onclick="setMode('A5')">중음라(6)-고음라(<div class="num-box"><span class="dot high-dot"></span>6</div>)</button>
+                 <button class="menu-btn" onclick="setMode('C6')">고음도(<div class="num-box"><span class="dot high-dot"></span>1</div>)-최고음도(<div class="num-box"><div class="super-high-dots"><span class="dot"></span><span class="dot"></span></div>1</div>)</button>
+            </div>
+        </div>
+
+        <div class="status-msg" id="status-text">원하는 음정을 선택하고 훈련을 시작하세요</div>
+        <div class="progress-bar"><div id="progress-fill"></div></div>
+        <button id="start-btn">훈련 시작하기</button>
+    </div>
+</div>
+
+<script>
+    const MASTER_PW = "master77";
+    function unlockApp() {
+        if(document.getElementById('pw-input').value === MASTER_PW) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'flex';
+            document.body.classList.add('unlocked');
+            renderHarmonica(); setMode('C4');
+        } else {
+            alert("비밀번호가 틀렸습니다.");
+        }
+    }
+
+    /* 선생님의 원본 피드백 및 렌더링 로직 100% 보존 */
+    const HOLE_DATA = { 1:['레','low'], 2:['도','low'], 3:['파','low'], 4:['미','low'], 5:['라','low'], 6:['솔','low'], 7:['시','low'], 8:['도','mid'], 9:['레','mid'], 10:['미','mid'], 11:['파','mid'], 12:['솔','mid'], 13:['라','mid'], 15:['시','mid'], 14:['도','high'], 17:['레','high'], 16:['미','high'], 19:['파','high'], 18:['솔','high'], 21:['라','high'], 20:['도','super_high'] };
+    const NOTE_TO_NUM = { '도':'1', '레':'2', '미':'3', '파':'4', '솔':'5', '라':'6', '시':'7' };
+    const SCALES = { 'C4': { type: 'blow', low: 261.63, high: 523.25, midL: 320, midH: 460, holes: [2, 8], label: '저음도 - 중음도' }, 'D4': { type: 'draw', low: 293.66, high: 587.33, midL: 350, midH: 500, holes: [1, 9], label: '저음레 - 중음레' }, 'E4': { type: 'blow', low: 329.63, high: 659.25, midL: 420, midH: 580, holes: [4, 10], label: '저음미 - 중음미' }, 'F4': { type: 'draw', low: 349.23, high: 698.46, midL: 400, midH: 600, holes: [3, 11], label: '저음파 - 중음파' }, 'G4': { type: 'blow', low: 392.00, high: 783.99, midL: 450, midH: 700, holes: [6, 12], label: '저음솔 - 중음솔' }, 'A4': { type: 'draw', low: 440.00, high: 880.00, midL: 500, midH: 800, holes: [5, 13], label: '저음라 - 중음라' }, 'B4': { type: 'draw', low: 493.88, high: 987.77, midL: 550, midH: 900, holes: [7, 15], label: '저음시 - 중음시' }, 'C5': { type: 'blow', low: 523.25, high: 1046.50, midL: 600, midH: 950, holes: [8, 14], label: '중음도 - 고음도' }, 'D5': { type: 'draw', low: 587.33, high: 1174.66, midL: 700, midH: 1000, holes: [9, 17], label: '중음레 - 고음레' }, 'E5': { type: 'blow', low: 659.25, high: 1318.51, midL: 750, midH: 1200, holes: [10, 16], label: '중음미 - 고음미' }, 'F5': { type: 'draw', low: 698.46, high: 1396.91, midL: 800, midH: 1250, holes: [11, 19], label: '중음파 - 고음파' }, 'G5': { type: 'blow', low: 783.99, high: 1567.98, midL: 900, midH: 1400, holes: [12, 18], label: '중음솔 - 중음솔' }, 'A5': { type: 'draw', low: 880.00, high: 1760.00, midL: 1000, midH: 1600, holes: [13, 21], label: '중음라 - 중음라' }, 'C6': { type: 'blow', low: 1046.50, high: 2093.00, midL: 1200, midH: 1900, holes: [14, 20], label: '고음도 - 최고음도' } };
+
+    let audioCtx, analyser, dataArray, successCounter = 0;
+    const TARGET_SUCCESS = 12;
+    let currentScaleKey = 'C4';
+
+    function renderHarmonica() {
+        const hGroup = document.getElementById('holes-group'), rBoxes = document.getElementById('red-boxes'), hNums = document.getElementById('hole-numbers');
+        hGroup.innerHTML = ''; rBoxes.innerHTML = ''; hNums.innerHTML = '';
+        const hWidth = 58, startX = 165;
+        for (let i = 1; i <= 21; i++) {
+            const x = startX + (i-1) * (hWidth + 4), data = HOLE_DATA[i];
+            createHole(hGroup, x, 40, i, data, 'top', NOTE_TO_NUM[data[0]]);
+            createHole(hGroup, x, 125, i, data, 'bottom', data[0]);
+            const numT = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            numT.setAttribute("x", x + hWidth/2); numT.setAttribute("y", 223); numT.setAttribute("fill", "#333"); numT.setAttribute("text-anchor", "middle"); numT.setAttribute("font-size", "14"); numT.setAttribute("font-weight", "bold");
+            numT.textContent = i; hNums.appendChild(numT);
+            if ([2, 8, 14, 20].includes(i)) {
+                const rb = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                rb.setAttribute("x", x-2); rb.setAttribute("y", 38); rb.setAttribute("width", hWidth+4);
+                rb.setAttribute("height", 164); rb.setAttribute("rx", "5"); rb.setAttribute("class", "do-box"); rBoxes.appendChild(rb);
+            }
+        }
+    }
+
+    function createHole(parent, x, y, num, data, pos, label) {
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const r = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        r.setAttribute("x", x); r.setAttribute("y", y); r.setAttribute("width", 58); r.setAttribute("height", 75);
+        r.setAttribute("class", "hole"); r.setAttribute("id", `hole-${num}-${pos}`); g.appendChild(r);
+        const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        t.setAttribute("x", x+29); t.setAttribute("y", y+43); t.setAttribute("fill", "white"); t.setAttribute("text-anchor", "middle"); t.setAttribute("font-size", "22"); t.setAttribute("font-weight", "bold"); t.textContent = label; g.appendChild(t);
+        if (data[1] === 'low') addDot(g, x+29, y+65);
+        else if (data[1] === 'high') addDot(g, x+29, y+12);
+        else if (data[1] === 'super_high') { addDot(g, x+21, y+12); addDot(g, x+37, y+12); }
+        parent.appendChild(g);
+    }
+    function addDot(p, cx, cy) {
+        const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", "3.2"); c.setAttribute("fill", "white"); p.appendChild(c);
+    }
+
+    function setMode(key) {
+        currentScaleKey = key; successCounter = 0; const config = SCALES[key];
+        document.body.className = config.type === 'blow' ? 'mode-blow unlocked' : 'mode-draw unlocked';
+        document.querySelectorAll('.menu-btn').forEach(b => b.classList.toggle('active', b.getAttribute('onclick').includes(key)));
+        document.getElementById('status-text').innerText = `${config.label} (${config.type === 'blow' ? '날숨' : '들숨'}) 대기`;
+        document.getElementById('progress-fill').style.width = "0%";
+    }
+
+    document.getElementById('start-btn').onclick = async () => {
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }});
+            const source = audioCtx.createMediaStreamSource(stream);
+            analyser = audioCtx.createAnalyser(); analyser.fftSize = 8192; source.connect(analyser);
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            document.getElementById('start-btn').style.display = 'none'; loop();
+        } catch (e) { alert("마이크를 연결해주세요!"); }
+    };
+
+    function loop() {
+        analyser.getByteFrequencyData(dataArray); const config = SCALES[currentScaleKey]; const nyquist = audioCtx.sampleRate / 2;
+        const getEnergy = (f) => dataArray[Math.round((f / nyquist) * analyser.frequencyBinCount)];
+        const eLow = getEnergy(config.low), eHigh = getEnergy(config.high);
+        let eMid = 0; const mIdxL = Math.round((config.midL / nyquist) * analyser.frequencyBinCount), mIdxH = Math.round((config.midH / nyquist) * analyser.frequencyBinCount);
+        for (let i = mIdxL; i <= mIdxH; i++) if (dataArray[i] > eMid) eMid = dataArray[i];
+        const hasLow = eLow > 80, hasHigh = eHigh > 45; const hasLeak = eMid > (Math.max(eLow, eHigh) * 0.45);
+        document.querySelectorAll('.hole').forEach(h => h.classList.remove('active'));
+        if (hasLow) { document.getElementById(`hole-${config.holes[0]}-top`).classList.add('active'); document.getElementById(`hole-${config.holes[0]}-bottom`).classList.add('active'); }
+        if (hasHigh) { document.getElementById(`hole-${config.holes[1]}-top`).classList.add('active'); document.getElementById(`hole-${config.holes[1]}-bottom`).classList.add('active'); }
+        
+        const st = document.getElementById('status-text'), fx = document.getElementById('fx-layer');
+        if (hasLow && hasHigh) {
+            if (hasLeak) { successCounter = 0; st.innerText = "중간소리가 납니다.\n명확한 소리에 집중하세요."; fx.innerHTML = "<span class='tongue-fx'>😝</span>"; fx.classList.add('show'); }
+            else {
+                successCounter++; document.getElementById('progress-fill').style.width = (successCounter / TARGET_SUCCESS) * 100 + "%";
+                if (successCounter >= TARGET_SUCCESS) { document.body.classList.add('success-glow'); st.innerText = "완벽한 옥타브! 🏆"; fx.innerHTML = "<span class='flower-fx'>🌸🎊🌸</span>"; fx.classList.add('show'); }
+                else { st.innerText = "좋습니다! 유지하세요."; fx.classList.remove('show'); }
+            }
+        } else { successCounter = 0; document.body.classList.remove('success-glow'); st.innerText = `${config.label} (${config.type === 'blow' ? '날숨' : '들숨'}) 훈련 중`; fx.classList.remove('show'); }
+        requestAnimationFrame(loop);
+    }
+</script>
+</body>
+</html>
